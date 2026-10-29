@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { requireUser } from "@/lib/auth";
 import { getResourceDetail } from "@/lib/queries/resources";
+import { getResourceReadiness } from "@/lib/readiness";
+import { ReadinessPanel } from "@/components/readiness-panel";
 import { createBookingAction } from "@/lib/actions/bookings";
 import { updateResourceStatusAction } from "@/lib/actions/resources";
 import { formatDate, formatHours, formatRange, formatTime, istDateKey, shiftDays } from "@/lib/format";
@@ -36,6 +38,7 @@ export default async function ResourceDetailPage({
   const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(query.date ?? "") ? query.date! : istDateKey();
   const detail = await getResourceDetail(user.organizationId, user.userId, id, dateKey);
   if (!detail) notFound();
+  const readiness = await getResourceReadiness(user.organizationId, id);
 
   const slots = detail.availability.slots;
   const freeStarts = slots
@@ -82,6 +85,11 @@ export default async function ResourceDetailPage({
               Capital evidence
             </Link>
           ) : null}
+          {staff ? (
+            <Link href={`/readiness?resource=${detail.id}`} className="btn-secondary">
+              Calibration &amp; stock
+            </Link>
+          ) : null}
           <Link href={`/operations?resource=${detail.id}`} className="btn-secondary">
             Report an issue
           </Link>
@@ -89,6 +97,10 @@ export default async function ResourceDetailPage({
       </div>
 
       <Flash error={query.error} ok={query.ok} />
+
+      <div className="mb-5">
+        <ReadinessPanel result={readiness} />
+      </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <div className="space-y-5">

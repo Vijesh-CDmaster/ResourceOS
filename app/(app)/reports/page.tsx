@@ -12,6 +12,7 @@ const REASON_LABEL: Record<string, string> = {
   blackout: "Blocked window",
   resource_down: "Resource unavailable",
   approval_rejected: "Approval rejected",
+  not_ready: "Resource not ready",
 };
 
 export default async function ReportsPage({

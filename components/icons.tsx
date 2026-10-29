@@ -18,7 +18,8 @@ type IconName =
   | "users"
   | "search"
   | "plug"
-  | "coins";
+  | "coins"
+  | "box";
 
 const PATHS: Record<IconName, string> = {
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
@@ -39,6 +40,7 @@ const PATHS: Record<IconName, string> = {
   search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm10 2-4.3-4.3",
   plug: "M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v5",
   coins: "M9 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm6-9.7A5 5 0 0 1 16 14a6 6 0 0 1-8 8 5 5 0 0 1-3-9.9M9 8h.01M9 11V8",
+  box: "M4 8h16v12H4zM4 8l2-4h12l2 4M9 12h6",
 };
 
 export function Icon({

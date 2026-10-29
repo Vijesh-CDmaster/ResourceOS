@@ -7,11 +7,16 @@ import { requireUser } from "../auth";
 import { canManage, isStaff } from "../roles";
 import { istWeekday, minutesFromMidnight, parseInstituteTime } from "../format";
 import { notifyManagers, notifyUser, recordAudit, recordUnmetDemand } from "../audit";
+import { bookingGate, consumeRequiredConsumables } from "../readiness";
 import { fail, field, optionalField, ok } from "../action-utils";
 
 type CreateResult =
   | { ok: true; bookingId: string; status: string; resourceName: string }
-  | { ok: false; reason: "conflict" | "no_training" | "quota" | "blackout" | "resource_down"; message: string };
+  | {
+      ok: false;
+      reason: "conflict" | "no_training" | "quota" | "blackout" | "resource_down" | "not_ready";
+      message: string;
+    };
 
 export async function createBookingAction(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -125,6 +130,14 @@ export async function createBookingAction(formData: FormData): Promise<void> {
           reason: "blackout" as const,
           message: "That window is blocked for maintenance or a facility closure.",
         };
+      }
+
+      // Operational readiness: calibration, open safety holds, maintenance and
+      // required stock. A single hard block stops the request and is recorded as
+      // unmet demand, so the facility can see what capacity it could not use.
+      const gate = await bookingGate(db, resourceId, startsAt);
+      if (!gate.ok) {
+        return { ok: false as const, reason: "not_ready" as const, message: gate.message };
       }
 
       const status = resource.requires_approval ? "requested" : "confirmed";
@@ -358,11 +371,12 @@ export async function checkInAction(formData: FormData): Promise<void> {
       id: string;
       status: string;
       user_id: string;
+      resource_id: string;
       starts_at: Date;
       ends_at: Date;
       resource_name: string;
     }>(
-      `SELECT b.id, b.status, b.user_id, b.starts_at, b.ends_at, r.name AS resource_name
+      `SELECT b.id, b.status, b.user_id, b.resource_id, b.starts_at, b.ends_at, r.name AS resource_name
          FROM bookings b JOIN resources r ON r.id = b.resource_id
         WHERE b.id = $1 FOR UPDATE`,
       [bookingId],
@@ -375,11 +389,41 @@ export async function checkInAction(formData: FormData): Promise<void> {
     if (Date.now() < opens.getTime()) throw new Error("Check-in opens 30 minutes before the slot.");
     if (Date.now() > booking.ends_at.getTime()) throw new Error("This slot has already ended.");
 
+    // Readiness is re-checked at the moment of use, not only at booking time: a
+    // calibration can expire, an incident can be raised, or stock can run out
+    // between approval and check-in.
+    const gate = await bookingGate(db, booking.resource_id, new Date());
+    if (!gate.ok) {
+      throw new Error(`Check-in blocked. ${gate.message}`);
+    }
+
     await db.query(
       `INSERT INTO usage_sessions (organization_id, booking_id, started_at) VALUES ($1, $2, now())
        ON CONFLICT (booking_id) DO NOTHING`,
       [user.organizationId, bookingId],
     );
+
+    // Deduct required consumables exactly once per booking. Throws (rolling the
+    // check-in back) if a competing session took the last unit.
+    const consumed = await consumeRequiredConsumables(db, {
+      organizationId: user.organizationId,
+      bookingId,
+      resourceId: booking.resource_id,
+      actorId: user.userId,
+    });
+    if (consumed.length > 0) {
+      await recordAudit(db, {
+        organizationId: user.organizationId,
+        actorId: user.userId,
+        action: "consumable.consumed",
+        entityType: "booking",
+        entityId: bookingId,
+        summary: `Consumed ${consumed
+          .map((item) => `${item.quantity} ${item.unit} ${item.name}`)
+          .join(", ")}`,
+        metadata: { resourceId: booking.resource_id, consumed },
+      });
+    }
     await recordAudit(db, {
       organizationId: user.organizationId,
       actorId: user.userId,

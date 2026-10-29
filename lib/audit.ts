@@ -67,7 +67,14 @@ export async function recordUnmetDemand(
     userId: string;
     startsAt: Date;
     endsAt: Date;
-    reason: "conflict" | "no_training" | "quota" | "blackout" | "resource_down" | "approval_rejected";
+    reason:
+      | "conflict"
+      | "no_training"
+      | "quota"
+      | "blackout"
+      | "resource_down"
+      | "approval_rejected"
+      | "not_ready";
   },
 ): Promise<void> {
   await db.query(

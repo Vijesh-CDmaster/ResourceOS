@@ -2,6 +2,8 @@
 
 An open-source, self-hostable **facility booking control loop** for shared labs, workshops and equipment pools. ResourceOS handles the whole operational chain — eligibility and training, approval, conflict-free reservation, check-in/check-out, maintenance blackouts, incidents, audit trail and utilization reporting — as one deterministic, auditable application.
 
+The pitch, business model and demo script are in [docs/pitch.md](docs/pitch.md). The 16-slide deck is [docs/ResourceOS-CodeHack-2026.pptx](docs/ResourceOS-CodeHack-2026.pptx), generated from [scripts/make-deck.mjs](scripts/make-deck.mjs).
+
 Built for the "free / open-source build plan": no ML in v1, no microservices, no Kubernetes, no paid APIs.
 
 ![ResourceOS dashboard](docs/dashboard.png)

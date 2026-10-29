@@ -37,6 +37,8 @@ export function AppShell({
     items.push({ href: "/approvals", label: "Approvals", icon: "check", badge: pendingCount });
   }
   if (user.role !== "member") {
+    items.push({ href: "/readiness", label: "Readiness", icon: "shield" });
+    items.push({ href: "/consumables", label: "Consumables", icon: "box" });
     items.push({ href: "/operations", label: "Operations", icon: "wrench" });
     items.push({ href: "/capital", label: "Capital", icon: "coins" });
     items.push({ href: "/reports", label: "Reports", icon: "chart" });

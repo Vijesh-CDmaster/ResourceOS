@@ -7,7 +7,19 @@ import { Icon } from "./icons";
 export type NavItem = {
   href: string;
   label: string;
-  icon: "grid" | "cube" | "calendar" | "check" | "wrench" | "chart" | "settings" | "scroll" | "plug" | "coins";
+  icon:
+    | "grid"
+    | "cube"
+    | "calendar"
+    | "check"
+    | "wrench"
+    | "chart"
+    | "settings"
+    | "scroll"
+    | "plug"
+    | "coins"
+    | "shield"
+    | "box";
   badge?: number;
 };
 
