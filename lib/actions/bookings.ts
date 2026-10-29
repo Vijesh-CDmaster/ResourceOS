@@ -254,6 +254,17 @@ export async function decideBookingAction(formData: FormData): Promise<void> {
       if (!booking) throw new Error("Booking not found.");
       if (booking.status !== "requested") throw new Error("This request has already been decided.");
 
+      // Approval is the moment a request becomes a commitment, so readiness is
+      // re-evaluated here rather than trusted from request time: calibration can
+      // expire, an incident can be raised, or stock can run out while the request
+      // waits in the queue.
+      if (decision === "approve") {
+        const gate = await bookingGate(db, booking.resource_id, booking.starts_at);
+        if (!gate.ok) {
+          throw new Error(`Cannot approve. ${gate.message}`);
+        }
+      }
+
       const status = decision === "approve" ? "confirmed" : "rejected";
       await db.query(
         `UPDATE bookings SET status = $2, decided_by = $3, decided_at = now(), decision_note = $4 WHERE id = $1`,

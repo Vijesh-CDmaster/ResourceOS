@@ -28,6 +28,8 @@ Built for the "free / open-source build plan": no ML in v1, no microservices, no
 - **Integration foundation** — tenant-scoped connections to external booking, lab-management, finance and maintenance systems, with idempotent ingestion, external-ID mappings, source provenance, sync checkpoints, retries, failed-record quarantine and AES-256-GCM sealed provider credentials. See [docs/integrations.md](docs/integrations.md). No vendor connector is implemented yet.
 - **Capital decisions** — equipment evidence (utilisation, downtime, unmet demand, repair spend, lifecycle cost) turned into an assessment of five options (buy, repair, share, reallocate, retire), with the arithmetic and the missing data shown, and a persistent decision record that only an authorised person can decide. See [docs/capital-decisions.md](docs/capital-decisions.md).
 
+- **Operational readiness** — calibration, safety holds, maintenance windows and required stock are evaluated as one verdict (`ready` / `warnings` / `blocked`) and enforced on the server at booking creation, approval and check-in. Consumables hold transactional stock with an audited movement ledger. See [docs/readiness.md](docs/readiness.md).
+
 ### Demo tenant
 
 Seeds *Meridian Institute of Technology* with 10 instruments, 8 members, 90 days of booking history, maintenance, incidents, unmet demand and notifications.
@@ -289,7 +291,9 @@ drives the real sync engine through the connector contract:
 | Tenant isolation | Another institution cannot read the asset, generate a record, or decide a foreign record |
 | Immutability | `DELETE` on a decision record is rejected by the database |
 
-Use a dedicated database server or role for this: the suites drop and recreate `resourceos_test`, `resourceos_int_test`, `resourceos_actions_test` and `resourceos_capital_test` on every run, and never touch the `resourceos` or `resourceos_demo` databases.
+`tests/readiness.test.mjs` (22 tests) covers the operational-readiness slice: the pure evaluator (expired/missing/failed calibration, safety holds, maintenance windows, stock), booking creation refused with a recorded unmet-demand reason, approval re-checked after readiness regresses, check-in blocked by a hold raised post-approval, single-consumption per booking, concurrent stock contention that cannot go negative, role permissions and tenant isolation.
+
+Use a dedicated database server or role for this: the suites drop and recreate `resourceos_test`, `resourceos_int_test`, `resourceos_actions_test`, `resourceos_capital_test` and `resourceos_readiness_test` on every run, and never touch the `resourceos` or `resourceos_demo` databases.
 
 ---
 
