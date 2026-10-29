@@ -6,16 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "node --env-file=.env.local db/migrate.mjs",
+    "db:seed": "node --env-file=.env.local db/seed.mjs",
+    "db:seed-demo": "node --env-file=.env.local db/seed-demo.mjs",
+    "db:reset": "ALLOW_DB_RESET=yes node --env-file=.env.local db/reset.mjs",
+    "jobs": "node --env-file=.env.local db/jobs.mjs",
+    "test": "node --env-file=.env.local --test"
   },
   "dependencies": {
     "next": "16.4.3",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

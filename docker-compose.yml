@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: resourceos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d resourceos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: worker
+    command: ["node", "db/migrate.mjs"]
+    environment:
+      ADMIN_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/resourceos
+      # Also used to grant the application role access to new migration tables.
+      DATABASE_URL: postgres://resourceos_app:app_dev_password@db:5432/resourceos
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      target: worker
+    command: ["node", "db/seed.mjs"]
+    profiles: ["demo"]
+    environment:
+      ADMIN_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/resourceos
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://resourceos_app:app_dev_password@db:5432/resourceos
+      # Generate with `openssl rand -hex 32`; leave unset to disable credential storage.
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  jobs:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://resourceos_app:app_dev_password@db:5432/resourceos
+    command: ["sh", "-c", "while true; do node db/jobs.mjs; sleep 300; done"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db_data:

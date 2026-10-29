@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# keep the documented template
+!.env.example
+
+# local dev server logs
+/dev.log
+/demo-dev.log

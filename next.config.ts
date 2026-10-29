@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  output: "standalone",
+  // This is an authenticated, database-backed app: every route is per-request.
+  // Cache Components is intentionally disabled so session reads stay straightforward.
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {
