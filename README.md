@@ -29,6 +29,7 @@ Built for the "free / open-source build plan": no ML in v1, no microservices, no
 - **Capital decisions** — equipment evidence (utilisation, downtime, unmet demand, repair spend, lifecycle cost) turned into an assessment of five options (buy, repair, share, reallocate, retire), with the arithmetic and the missing data shown, and a persistent decision record that only an authorised person can decide. See [docs/capital-decisions.md](docs/capital-decisions.md).
 
 - **Operational readiness** — calibration, safety holds, maintenance windows and required stock are evaluated as one verdict (`ready` / `warnings` / `blocked`) and enforced on the server at booking creation, approval and check-in. Consumables hold transactional stock with an audited movement ledger. See [docs/readiness.md](docs/readiness.md).
+- **Work orders and verified release** — an incident converts into a numbered work order with an owner, diagnosis, parts, labour, costs and downtime; the repair is signed off, independently verified where policy requires it, and only an authorised release clears the separate resource hold after re-running every readiness check. A **controlled emergency override** records scope, a mandatory reason, expiry, affected bookings and an append-only audit trail, and cannot bypass calibration, safety holds, retirement, quota or training. See [docs/work-orders.md](docs/work-orders.md).
 
 ### Demo tenant
 
@@ -293,7 +294,9 @@ drives the real sync engine through the connector contract:
 
 `tests/readiness.test.mjs` (22 tests) covers the operational-readiness slice: the pure evaluator (expired/missing/failed calibration, safety holds, maintenance windows, stock), booking creation refused with a recorded unmet-demand reason, approval re-checked after readiness regresses, check-in blocked by a hold raised post-approval, single-consumption per booking, concurrent stock contention that cannot go negative, role permissions and tenant isolation.
 
-Use a dedicated database server or role for this: the suites drop and recreate `resourceos_test`, `resourceos_int_test`, `resourceos_actions_test`, `resourceos_capital_test` and `resourceos_readiness_test` on every run, and never touch the `resourceos` or `resourceos_demo` databases.
+`tests/work-orders.test.mjs` (24 tests) covers the work-order slice: lifecycle transitions, incident conversion and uniqueness, assignment and release permissions, repair completion without automatic hold clearance (including the asset staying unbookable), self-verification refusal, rejected verification and rework, authorised release clearing exactly one hold and resolving the incident, expired calibration still blocking release, escalation, concurrent release attempts, reopen, override authorisation, mandatory reason/expiry, non-overridable conditions, affected-booking records with honest delivery status, append-only override and event history, cross-tenant access and RLS.
+
+Use a dedicated database server or role for this: the suites drop and recreate `resourceos_test`, `resourceos_int_test`, `resourceos_actions_test`, `resourceos_capital_test`, `resourceos_readiness_test` and `resourceos_workorders_test` on every run, and never touch the `resourceos` or `resourceos_demo` databases.
 
 ---
 
@@ -315,7 +318,7 @@ The suite above covers the database guarantees. The booking state machine (appro
 
 Honest gaps against the full plan, deliberately deferred from this slice:
 
-- **Email notifications** — notifications are in-app only. Add SMTP (institutional relay, Postal or Mailu) behind the existing `notifyUser`/`notifyManagers` helpers.
+- **Email delivery** — in-app notifications are real; the work-order/override flows also record every outbound email in `notification_outbox` as `unavailable` (or `pending` when a transport is configured), never as sent. Add SMTP (institutional relay, Postal or Mailu) and a worker that drains the outbox.
 - **File evidence for incidents** — no object storage yet. MinIO + signed URLs is the intended path; do not store uploads on the app filesystem.
 - **Booking reminders** (24h/1h) and approval escalation — the job runner exists; add these as additional job functions with a `notifications` dedupe key.
 - **A real vendor connector** — the integration foundation is in place and tested against the reference feed only. A provider integration needs that provider's documented API and a sandbox test before it can be claimed.

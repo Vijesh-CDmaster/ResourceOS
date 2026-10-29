@@ -38,6 +38,7 @@ export function AppShell({
   }
   if (user.role !== "member") {
     items.push({ href: "/readiness", label: "Readiness", icon: "shield" });
+    items.push({ href: "/work-orders", label: "Work orders", icon: "clipboard" });
     items.push({ href: "/consumables", label: "Consumables", icon: "box" });
     items.push({ href: "/operations", label: "Operations", icon: "wrench" });
     items.push({ href: "/capital", label: "Capital", icon: "coins" });

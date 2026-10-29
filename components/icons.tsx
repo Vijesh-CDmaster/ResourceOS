@@ -19,7 +19,8 @@ type IconName =
   | "search"
   | "plug"
   | "coins"
-  | "box";
+  | "box"
+  | "clipboard";
 
 const PATHS: Record<IconName, string> = {
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
@@ -41,6 +42,7 @@ const PATHS: Record<IconName, string> = {
   plug: "M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v5",
   coins: "M9 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm6-9.7A5 5 0 0 1 16 14a6 6 0 0 1-8 8 5 5 0 0 1-3-9.9M9 8h.01M9 11V8",
   box: "M4 8h16v12H4zM4 8l2-4h12l2 4M9 12h6",
+  clipboard: "M9 4h6v3H9zM9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3M8 12h8M8 16h5",
 };
 
 export function Icon({

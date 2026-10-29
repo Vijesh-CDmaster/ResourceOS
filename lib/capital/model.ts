@@ -84,6 +84,10 @@ export type MaintenanceFact = {
   status: string;
   resolvedAt: string | null;
   scheduledStart: string | null;
+  /** Where the row came from. Work-order rows are verified repairs only. */
+  source?: "maintenance_record" | "work_order";
+  /** Whether `cost` is a recorded actual, a planning estimate, or unknown. */
+  costBasis?: "actual" | "estimate" | "unknown";
 };
 
 /** Another asset in the same category, used for sharing/reallocation comparisons. */
@@ -163,6 +167,12 @@ export type Evidence = {
     costPerUsedHour: number | null;
     repairEstimate: number | null;
     recurringFaults: boolean;
+    /** Repairs evidenced by a closed work order, not by a maintenance note. */
+    verifiedRepairs: number;
+    /** Spend recorded as an actual invoice figure, kept separate from estimates. */
+    actualCost: number;
+    /** Spend that is still only an estimate. Never added into an actual total. */
+    estimatedCost: number;
     topFaults: Array<{ category: string; count: number; cost: number }>;
   };
   risk: {
@@ -384,6 +394,17 @@ export function computeEvidence(input: EvidenceInput): Evidence {
       costPerUsedHour: usedHours > 0 ? round(maintenanceCost / usedHours) : null,
       repairEstimate,
       recurringFaults: input.maintenance.length >= 3,
+      verifiedRepairs: input.maintenance.filter((record) => record.source === "work_order").length,
+      actualCost: round(
+        input.maintenance
+          .filter((record) => record.costBasis === "actual")
+          .reduce((total, record) => total + record.cost, 0),
+      ),
+      estimatedCost: round(
+        input.maintenance
+          .filter((record) => record.costBasis === "estimate")
+          .reduce((total, record) => total + record.cost, 0),
+      ),
       topFaults,
     },
     risk: {

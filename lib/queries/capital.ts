@@ -417,7 +417,7 @@ export async function getAssetCapitalInputs(
     const asset = assetResult.rows[0];
     if (!asset) return null;
 
-    const [bookings, sessions, unmet, maintenance, peers, incidents] = await Promise.all([
+    const [bookings, sessions, unmet, maintenance, workOrders, peers, incidents] = await Promise.all([
       db.query<{
         status: string;
         starts_at: Date;
@@ -467,6 +467,30 @@ export async function getAssetCapitalInputs(
           WHERE resource_id = $1 AND organization_id = $2
             AND COALESCE(resolved_at, scheduled_start, created_at) >= now() - $3 * interval '1 day'
           ORDER BY COALESCE(resolved_at, scheduled_start, created_at) DESC`,
+        [resourceId, organizationId, windowDays],
+      ),
+      // Verified repair evidence from the work-order workflow. Only closed jobs
+      // are counted: they have been released, so the repair and its downtime are
+      // finished facts rather than work in progress. Estimates stay labelled as
+      // estimates and are never folded into the actual figure.
+      db.query<{
+        code: string;
+        title: string;
+        actual_cost: string | null;
+        estimated_cost: string | null;
+        downtime_hours: string | null;
+        downtime_start: Date | null;
+        closed_at: Date | null;
+      }>(
+        `SELECT w.code, coalesce(i.title, nullif(w.diagnosis, ''), 'Repair') AS title,
+                w.actual_cost::text, w.estimated_cost::text,
+                (extract(epoch FROM (w.downtime_end - w.downtime_start)) / 3600)::text AS downtime_hours,
+                w.downtime_start, w.closed_at
+           FROM work_orders w
+           LEFT JOIN incidents i ON i.id = w.incident_id
+          WHERE w.resource_id = $1 AND w.organization_id = $2 AND w.status = 'closed'
+            AND coalesce(w.closed_at, w.created_at) >= now() - $3 * interval '1 day'
+          ORDER BY coalesce(w.closed_at, w.created_at) DESC`,
         [resourceId, organizationId, windowDays],
       ),
       db.query<{
@@ -528,15 +552,31 @@ export async function getAssetCapitalInputs(
         departmentId: row.department_id,
         departmentName: row.department_name,
       })),
-      maintenance: maintenance.rows.map((row) => ({
-        title: row.title,
-        faultCategory: row.fault_category,
-        cost: toNumber(row.cost),
-        downtimeHours: toNumber(row.downtime_hours),
-        status: row.status,
-        resolvedAt: row.resolved_at ? row.resolved_at.toISOString() : null,
-        scheduledStart: row.scheduled_start ? row.scheduled_start.toISOString() : null,
-      })),
+      maintenance: [
+        ...maintenance.rows.map((row) => ({
+          title: row.title,
+          faultCategory: row.fault_category,
+          cost: toNumber(row.cost),
+          downtimeHours: toNumber(row.downtime_hours),
+          status: row.status,
+          resolvedAt: row.resolved_at ? row.resolved_at.toISOString() : null,
+          scheduledStart: row.scheduled_start ? row.scheduled_start.toISOString() : null,
+          source: "maintenance_record" as const,
+          costBasis: "actual" as const,
+        })),
+        ...workOrders.rows.map((row) => ({
+          title: `${row.code} — ${row.title}`,
+          faultCategory: "Work order",
+          cost: toNumber(row.actual_cost ?? row.estimated_cost),
+          downtimeHours: toNumber(row.downtime_hours),
+          status: "resolved",
+          resolvedAt: row.closed_at ? row.closed_at.toISOString() : null,
+          scheduledStart: row.downtime_start ? row.downtime_start.toISOString() : null,
+          source: "work_order" as const,
+          costBasis:
+            row.actual_cost !== null ? ("actual" as const) : row.estimated_cost !== null ? ("estimate" as const) : ("unknown" as const),
+        })),
+      ],
       peers: peers.rows.map((row) => ({
         id: row.id,
         code: row.code,

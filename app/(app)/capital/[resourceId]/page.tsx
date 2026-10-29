@@ -356,7 +356,10 @@ export default async function AssetCapitalPage({
               {[
                 ["Events in window", evidence.maintenance.events],
                 ["Resolved repairs", evidence.maintenance.resolved],
+                ["Verified work orders", evidence.maintenance.verifiedRepairs],
                 ["Repair spend", formatMoney(evidence.maintenance.cost)],
+                ["of which actual", formatMoney(evidence.maintenance.actualCost)],
+                ["of which estimated", formatMoney(evidence.maintenance.estimatedCost)],
                 ["Downtime hours", `${Math.round(evidence.maintenance.downtimeHours)}h`],
                 ["Repair estimate", evidence.maintenance.repairEstimate === null ? "unknown (no resolved repair)" : formatMoney(evidence.maintenance.repairEstimate)],
                 ["Cost per used hour", evidence.maintenance.costPerUsedHour === null ? "—" : formatMoney(evidence.maintenance.costPerUsedHour)],

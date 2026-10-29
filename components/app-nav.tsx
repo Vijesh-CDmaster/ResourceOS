@@ -19,7 +19,8 @@ export type NavItem = {
     | "plug"
     | "coins"
     | "shield"
-    | "box";
+    | "box"
+    | "clipboard";
   badge?: number;
 };
 

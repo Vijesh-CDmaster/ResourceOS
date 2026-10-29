@@ -13,13 +13,15 @@ app/(app)/readiness        board and per-asset workspace
 app/(app)/consumables      catalogue, stock adjustment, movement history
 ```
 
-## The six gates
+## The gates
 
 | Gate | Source | Severity |
 |---|---|---|
 | Asset lifecycle | `resources.status` (`retired` / `suspended` / `maintenance`) | block |
 | Calibration | `resources.requires_calibration` + latest `calibration_records` | block when required and missing, failed or expired; warning within 14 days of expiry |
 | Safety incidents | `incidents` with `status <> 'resolved'` | `high` blocks; `medium`/`low` warn |
+| Blocking hold | `resource_holds` with `status = 'active'` (raised by a work order) | block — cleared only by an authorised release |
+| Emergency restriction | `emergency_overrides` with action `restrict_resource`, not revoked, inside its window | block until it expires or is revoked |
 | Maintenance window | `blackout_periods` covering the requested time | block |
 | Consumables | `resource_consumables` → `consumables.stock` | mandatory short → block; below `min_stock` → warn |
 | Training and eligibility | existing booking rules (training expiry, quota, horizon) | unchanged |
@@ -45,8 +47,12 @@ data.
 - **Check-in** (`checkInAction`) — re-evaluated at the moment of use, then required
   consumables are deducted.
 
-Warnings never block. Blocks are never bypassed by the scheduling flows; there is no
-override path in this slice, so an emergency override cannot clear a safety hold.
+Warnings never block. Blocks are never bypassed by the scheduling flows. The
+emergency-override workflow in [docs/work-orders.md](work-orders.md) can restrict an
+asset or cancel bookings, but it explicitly cannot clear calibration, safety holds,
+resource holds, retirement, quota or training — those are resolved by their own
+workflow. A completed repair does not clear a hold either: only an authorised
+release does, and release re-runs this evaluation before it commits.
 
 ## Consumables
 
@@ -98,13 +104,9 @@ refusal to run twice):
 
 ## Known limitations (this slice)
 
-- **No work orders.** Incidents are resolved directly; there is no
-  reported → assigned → waiting-for-parts → verified workflow, and therefore no
-  "resolved but still on hold" state to test. Resolving the incident is what clears
-  a safety hold today.
-- **No emergency override.** There is no authorised path to start a session on a
-  blocked asset, so overrides cannot bypass safety rules — but facilities also
-  cannot record a justified exception yet.
+- **Calibration is not refreshed by the repair workflow.** A verified repair
+  restores the asset only if calibration is still valid; a repair does not create a
+  calibration record, and release is blocked until one is entered.
 - **No calibration reminders or scheduled jobs.** Overdue calibration is surfaced on
   the readiness board, not by email.
 - **No vendor/AMC, SOP versioning, samples/jobs, waitlists, guest access, cost

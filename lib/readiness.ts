@@ -44,6 +44,22 @@ export type ConsumableGate = {
   mandatory: boolean;
 };
 
+/** A blocking hold raised by an incident or a work order. Only release clears it. */
+export type ActiveHold = {
+  id: string;
+  kind: "safety" | "maintenance" | "quality";
+  title: string;
+  reason: string;
+};
+
+/** A live emergency restriction that halts work until it expires or is revoked. */
+export type ActiveRestriction = {
+  id: string;
+  scope: string;
+  reason: string;
+  expiresAt: Date | null;
+};
+
 export type ReadinessSnapshot = {
   resource: {
     id: string;
@@ -57,6 +73,9 @@ export type ReadinessSnapshot = {
   openIncidents: Array<{ severity: string; title: string }>;
   activeBlackout: { reason: string; endsAt: Date } | null;
   consumables: ConsumableGate[];
+  /** Optional so older callers and fixtures keep compiling; absent means none. */
+  activeHolds?: ActiveHold[];
+  emergencyRestrictions?: ActiveRestriction[];
   at: Date;
 };
 
@@ -197,7 +216,34 @@ export function evaluateReadiness(snapshot: ReadinessSnapshot): ReadinessResult 
     });
   }
 
-  // 4. Maintenance window covering the requested time.
+  // 4. Blocking holds. These are separate from the incident that caused them: a
+  //    completed repair does not clear them, and neither does closing the work
+  //    order. Only an authorised release does.
+  for (const hold of snapshot.activeHolds ?? []) {
+    const label = hold.kind === "safety" ? "Safety hold" : hold.kind === "quality" ? "Quality hold" : "Maintenance hold";
+    push({
+      code: "active_hold",
+      severity: "block",
+      title: `${label}: ${hold.title}`,
+      detail:
+        hold.reason ||
+        `${resource.name} is held by an open ${hold.kind} record. A completed repair does not release an asset.`,
+      action: "Complete the repair, have it verified where policy requires it, then release the asset explicitly.",
+    });
+  }
+
+  // 5. Live emergency restriction (temporary, expires or is revoked).
+  for (const restriction of snapshot.emergencyRestrictions ?? []) {
+    push({
+      code: "emergency_restriction",
+      severity: "block",
+      title: "Temporarily restricted",
+      detail: `An emergency restriction is in force: ${restriction.scope}.`,
+      action: "Wait for the restriction to expire or be revoked by a facility manager.",
+    });
+  }
+
+  // 6. Maintenance window covering the requested time.
   if (snapshot.activeBlackout) {
     push({
       code: "maintenance_hold",
@@ -215,7 +261,7 @@ export function evaluateReadiness(snapshot: ReadinessSnapshot): ReadinessResult 
     });
   }
 
-  // 5. Consumables.
+  // 7. Consumables.
   for (const item of snapshot.consumables) {
     if (item.mandatory && item.stock < item.required) {
       push({
@@ -275,7 +321,7 @@ export async function loadReadinessSnapshot(
   const resource = resourceResult.rows[0];
   if (!resource) throw new Error("Resource not found.");
 
-  const [calibration, incidents, blackout, consumables] = await Promise.all([
+  const [calibration, incidents, blackout, consumables, holds, restrictions] = await Promise.all([
     db.query<{ valid_until: string; result: string }>(
       `SELECT valid_until::text, result FROM calibration_records
         WHERE resource_id = $1
@@ -313,6 +359,19 @@ export async function loadReadinessSnapshot(
         ORDER BY c.name`,
       [resourceId],
     ),
+    db.query<{ id: string; kind: "safety" | "maintenance" | "quality"; title: string; reason: string }>(
+      `SELECT id, kind, title, reason FROM resource_holds
+        WHERE resource_id = $1 AND status = 'active'
+        ORDER BY CASE kind WHEN 'safety' THEN 0 WHEN 'maintenance' THEN 1 ELSE 2 END, created_at DESC`,
+      [resourceId],
+    ),
+    db.query<{ id: string; scope: string; reason: string; expires_at: Date | null }>(
+      `SELECT id, scope, reason, expires_at FROM emergency_overrides
+        WHERE resource_id = $1 AND action = 'restrict_resource' AND revoked_at IS NULL
+          AND starts_at <= $2 AND (expires_at IS NULL OR expires_at > $2)
+        ORDER BY created_at DESC LIMIT 5`,
+      [resourceId, at],
+    ),
   ]);
 
   return {
@@ -339,6 +398,13 @@ export async function loadReadinessSnapshot(
       minStock: Number(row.min_stock),
       required: Number(row.qty_per_session),
       mandatory: row.mandatory,
+    })),
+    activeHolds: holds.rows,
+    emergencyRestrictions: restrictions.rows.map((row) => ({
+      id: row.id,
+      scope: row.scope,
+      reason: row.reason,
+      expiresAt: row.expires_at,
     })),
     at,
   };
