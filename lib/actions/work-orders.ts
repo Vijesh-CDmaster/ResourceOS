@@ -5,7 +5,7 @@ import { withOrg, isUniqueViolation, type Queryable } from "../db";
 import { requireUser } from "../auth";
 import { notifyManagers, notifyUser, recordAudit } from "../audit";
 import { evaluateReadiness, loadReadinessSnapshot } from "../readiness";
-import { queueEmail, type DeliveryOutcome } from "../notifications";
+import { queueEmail, type DeliveryOutcome } from "../notifications.ts";
 import {
   MIN_OVERRIDE_REASON,
   OVERRIDE_ACTIONS,

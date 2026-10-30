@@ -1,4 +1,3 @@
-import "server-only";
 import { Pool, type QueryResultRow } from "pg";
 
 const connectionString =
