@@ -6,7 +6,7 @@ import { requireUser } from "../auth";
 import { canManage } from "../roles";
 import { hashPassword } from "../password";
 import { notifyUser, recordAudit } from "../audit";
-import { fail, field, ok } from "../action-utils";
+import { fail, field, ok, errorMessage } from "../action-utils";
 
 const ROLES = ["admin", "manager", "technician", "member"];
 
@@ -62,7 +62,7 @@ export async function inviteMemberAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/admin", error instanceof Error ? error.message : "Could not invite the member.");
+    fail("/admin", errorMessage(error, "Could not invite the member."));
   }
 
   revalidatePath("/admin");
@@ -113,7 +113,7 @@ export async function grantTrainingAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/admin", error instanceof Error ? error.message : "Could not record training.");
+    fail("/admin", errorMessage(error, "Could not record training."));
   }
 
   revalidatePath("/admin");
@@ -144,7 +144,7 @@ export async function createCourseAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/admin", error instanceof Error ? error.message : "Could not create the course.");
+    fail("/admin", errorMessage(error, "Could not create the course."));
   }
 
   revalidatePath("/admin");

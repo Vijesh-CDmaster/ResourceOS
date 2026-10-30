@@ -93,9 +93,9 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
          ),
          downtime AS (
            SELECT resource_id,
-                  coalesce(sum(extract(epoch FROM (least(ends_at, $3) - greatest(starts_at, $2))) / 3600), 0) AS downtime_hours
+                  coalesce(sum(extract(epoch FROM (least(ends_at, $3::timestamptz) - greatest(starts_at, $2::timestamptz))) / 3600), 0) AS downtime_hours
              FROM blackout_periods
-            WHERE tstzrange(starts_at, ends_at) && tstzrange($2, $3)
+            WHERE tstzrange(starts_at, ends_at) && tstzrange($2::timestamptz, $3::timestamptz)
             GROUP BY resource_id
          ),
          bookings_agg AS (
@@ -104,10 +104,10 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
                   count(*) FILTER (WHERE status = 'completed')::int AS completed,
                   count(*) FILTER (WHERE status = 'cancelled')::int AS cancelled,
                   count(*) FILTER (WHERE status = 'no_show')::int AS no_shows,
-                  coalesce(sum(extract(epoch FROM (least(ends_at, $3) - greatest(starts_at, $2))) / 3600)
+                  coalesce(sum(extract(epoch FROM (least(ends_at, $3::timestamptz) - greatest(starts_at, $2::timestamptz))) / 3600)
                     FILTER (WHERE status IN ('requested','confirmed','completed')), 0) AS booked_hours
              FROM bookings
-            WHERE tstzrange(starts_at, ends_at) && tstzrange($2, $3)
+            WHERE tstzrange(starts_at, ends_at) && tstzrange($2::timestamptz, $3::timestamptz)
             GROUP BY resource_id
          ),
          actual AS (
@@ -115,7 +115,7 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
                   coalesce(sum(extract(epoch FROM (coalesce(us.ended_at, least(b.ends_at, now())) - us.started_at)) / 3600), 0) AS actual_hours
              FROM usage_sessions us
              JOIN bookings b ON b.id = us.booking_id
-            WHERE us.started_at >= $2 AND us.started_at < $3
+            WHERE us.started_at >= $2::timestamptz AND us.started_at < $3::timestamptz
             GROUP BY b.resource_id
          )
          SELECT r.id AS resource_id, r.code, r.name, r.status,
@@ -132,7 +132,7 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
            LEFT JOIN downtime dt ON dt.resource_id = r.id
            LEFT JOIN bookings_agg ba ON ba.resource_id = r.id
            LEFT JOIN actual ac ON ac.resource_id = r.id
-          WHERE r.status <> 'retired' AND r.organization_id = $1
+          WHERE r.status <> 'retired' AND r.organization_id = $1::uuid
           ORDER BY r.name`,
         [organizationId, rangeStart, rangeEnd],
       ),
@@ -140,7 +140,7 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
         `SELECT r.code AS resource_code, r.name AS resource_name, e.reason, count(*)::int AS count
            FROM unmet_demand_events e
            JOIN resources r ON r.id = e.resource_id
-          WHERE e.created_at >= $1 AND e.created_at < $2
+          WHERE e.created_at >= $1::timestamptz AND e.created_at < $2::timestamptz
           GROUP BY r.code, r.name, e.reason
           ORDER BY count DESC, r.name`,
         [rangeStart, rangeEnd],
@@ -156,13 +156,13 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
       }>(
         `SELECT u.id AS user_id, u.name AS user_name, u.email, d.name AS department,
                 count(*)::int AS bookings,
-                coalesce(sum(extract(epoch FROM (least(b.ends_at, $2) - greatest(b.starts_at, $1))) / 3600), 0)::text AS hours,
+                coalesce(sum(extract(epoch FROM (least(b.ends_at, $2::timestamptz) - greatest(b.starts_at, $1::timestamptz))) / 3600), 0)::text AS hours,
                 count(*) FILTER (WHERE b.status = 'no_show')::int AS no_shows
            FROM bookings b
            JOIN users u ON u.id = b.user_id
            LEFT JOIN memberships m ON m.user_id = u.id AND m.organization_id = b.organization_id
            LEFT JOIN departments d ON d.id = m.department_id
-          WHERE b.starts_at >= $1 AND b.starts_at < $2
+          WHERE b.starts_at >= $1::timestamptz AND b.starts_at < $2::timestamptz
             AND b.status IN ('requested','confirmed','completed','no_show')
           GROUP BY u.id, u.name, u.email, d.name
           ORDER BY hours DESC
@@ -175,7 +175,7 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
                 count(*) FILTER (WHERE status = 'resolved')::int AS resolved,
                 count(*) FILTER (WHERE severity = 'high')::int AS high
            FROM incidents
-          WHERE created_at >= $1 AND created_at < $2`,
+          WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz`,
         [rangeStart, rangeEnd],
       ),
       db.query<{ week: Date; bookings: number; no_shows: number }>(
@@ -183,7 +183,7 @@ export async function getReports(organizationId: string, fromKey: string, toKey:
                 count(*)::int AS bookings,
                 count(*) FILTER (WHERE status = 'no_show')::int AS no_shows
            FROM bookings
-          WHERE starts_at >= $1 AND starts_at < $2
+          WHERE starts_at >= $1::timestamptz AND starts_at < $2::timestamptz
             AND status IN ('completed','no_show','cancelled')
           GROUP BY 1 ORDER BY 1`,
         [rangeStart, rangeEnd],

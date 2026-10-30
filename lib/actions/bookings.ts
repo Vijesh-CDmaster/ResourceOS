@@ -8,7 +8,7 @@ import { canManage, isStaff } from "../roles";
 import { istWeekday, minutesFromMidnight, parseInstituteTime } from "../format";
 import { notifyManagers, notifyUser, recordAudit, recordUnmetDemand } from "../audit";
 import { bookingGate, consumeRequiredConsumables } from "../readiness";
-import { fail, field, optionalField, ok } from "../action-utils";
+import { fail, field, optionalField, ok, errorMessage } from "../action-utils";
 
 type CreateResult =
   | { ok: true; bookingId: string; status: string; resourceName: string }
@@ -304,7 +304,7 @@ export async function decideBookingAction(formData: FormData): Promise<void> {
     if (isBookingConflict(error)) {
       fail("/approvals", "Cannot approve: the resource is already committed for part of that window.");
     }
-    fail("/approvals", error instanceof Error ? error.message : "Could not update the request.");
+    fail("/approvals", errorMessage(error, "Could not update the request."));
   }
 
   revalidatePath("/approvals");
@@ -364,7 +364,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
       });
     }
   }).catch((error: unknown) => {
-    fail(backTo, error instanceof Error ? error.message : "Could not cancel the booking.");
+    fail(backTo, errorMessage(error, "Could not cancel the booking."));
   });
 
   revalidatePath("/bookings");
@@ -444,7 +444,7 @@ export async function checkInAction(formData: FormData): Promise<void> {
       summary: `${user.name} checked in to ${booking.resource_name}`,
     });
   }).catch((error: unknown) => {
-    fail(backTo, error instanceof Error ? error.message : "Could not check in.");
+    fail(backTo, errorMessage(error, "Could not check in."));
   });
 
   revalidatePath("/bookings");
@@ -496,7 +496,7 @@ export async function checkOutAction(formData: FormData): Promise<void> {
       metadata: { condition, consumables },
     });
   }).catch((error: unknown) => {
-    fail(backTo, error instanceof Error ? error.message : "Could not close the session.");
+    fail(backTo, errorMessage(error, "Could not close the session."));
   });
 
   revalidatePath("/bookings");

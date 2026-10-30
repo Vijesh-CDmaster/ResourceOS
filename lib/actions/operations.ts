@@ -5,7 +5,7 @@ import { withOrg } from "../db";
 import { requireUser } from "../auth";
 import { canManage, isStaff } from "../roles";
 import { notifyManagers, notifyUser, recordAudit } from "../audit";
-import { fail, field, ok, parseDateInput } from "../action-utils";
+import { fail, field, ok, parseDateInput, errorMessage } from "../action-utils";
 
 export async function createMaintenanceAction(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -77,7 +77,7 @@ export async function createMaintenanceAction(formData: FormData): Promise<void>
       });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
+    const message = errorMessage(error, "");
     const conflictMatch = message.match(/^__conflicts__(\d+)$/);
     if (conflictMatch) {
       fail(
@@ -134,7 +134,7 @@ export async function resolveMaintenanceAction(formData: FormData): Promise<void
       });
     });
   } catch (error) {
-    fail("/operations", error instanceof Error ? error.message : "Could not close maintenance.");
+    fail("/operations", errorMessage(error, "Could not close maintenance."));
   }
 
   revalidatePath("/operations");
@@ -179,7 +179,7 @@ export async function reportIncidentAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/operations", error instanceof Error ? error.message : "Could not report the incident.");
+    fail("/operations", errorMessage(error, "Could not report the incident."));
   }
 
   revalidatePath("/operations");
@@ -224,7 +224,7 @@ export async function resolveIncidentAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/operations", error instanceof Error ? error.message : "Could not close the incident.");
+    fail("/operations", errorMessage(error, "Could not close the incident."));
   }
 
   revalidatePath("/operations");

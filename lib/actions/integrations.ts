@@ -5,7 +5,7 @@ import { withOrg } from "../db";
 import { requireUser } from "../auth";
 import { canManage } from "../roles";
 import { recordAudit } from "../audit";
-import { fail, field, ok, optionalField } from "../action-utils";
+import { fail, field, ok, optionalField, errorMessage } from "../action-utils";
 import { getConnector, hasConnector } from "../integrations/registry";
 import { runSync, type TenantRunner } from "../integrations/engine";
 import { CredentialEncryptionError, decryptCredentials, encryptCredentials } from "../integrations/crypto";
@@ -129,7 +129,7 @@ export async function createConnectionAction(formData: FormData): Promise<void> 
     if (error instanceof CredentialEncryptionError) {
       fail(PATH, error.message);
     }
-    fail(PATH, error instanceof Error ? error.message : "Could not create the connection.");
+    fail(PATH, errorMessage(error, "Could not create the connection."));
   }
 
   revalidatePath(PATH);
@@ -166,7 +166,7 @@ export async function revokeConnectionAction(formData: FormData): Promise<void> 
       });
     });
   } catch (error) {
-    fail(PATH, error instanceof Error ? error.message : "Could not revoke the connection.");
+    fail(PATH, errorMessage(error, "Could not revoke the connection."));
   }
 
   revalidatePath(PATH);
@@ -241,7 +241,7 @@ export async function syncConnectionAction(formData: FormData): Promise<void> {
       if (result.status !== "succeeded") problem = summary;
     }
   } catch (error) {
-    problem = error instanceof Error ? error.message : "The sync could not be started.";
+    problem = errorMessage(error, "The sync could not be started.");
   }
 
   // Redirects must not be raised inside the try: `redirect()` signals itself by

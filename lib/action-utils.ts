@@ -20,6 +20,19 @@ export function ok(path: string, message: string): never {
   redirect(`${path}${separator}ok=${encodeURIComponent(message)}`);
 }
 
+/**
+ * Turns a thrown error into an operator-facing message. PostgreSQL errors carry a
+ * five-character SQLSTATE (`23505`, `22P02`, `23P01`…) and often embed table,
+ * constraint and column names; those are logged by the caller and replaced with
+ * the action's own wording so internals never reach the browser.
+ */
+export function errorMessage(error: unknown, fallback: string): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return fallback;
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
 export function requireFields(values: Record<string, string>): void {
   for (const [label, value] of Object.entries(values)) {
     if (!value) throw new Error(`${label} is required.`);

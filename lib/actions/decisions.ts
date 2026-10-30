@@ -5,7 +5,7 @@ import { withOrg } from "../db";
 import { requireUser } from "../auth";
 import { canManage } from "../roles";
 import { recordAudit } from "../audit";
-import { fail, field, ok } from "../action-utils";
+import { fail, field, ok, errorMessage } from "../action-utils";
 import {
   buildCapitalAssessment,
   DEFAULT_ASSUMPTIONS,
@@ -107,7 +107,7 @@ export async function generateDecisionAction(formData: FormData): Promise<void> 
       return id;
     });
   } catch (error) {
-    problem = error instanceof Error ? error.message : "Could not generate the recommendation.";
+    problem = errorMessage(error, "Could not generate the recommendation.");
   }
 
   if (problem || !decisionId) {
@@ -193,7 +193,7 @@ export async function recordDecisionAction(formData: FormData): Promise<void> {
         : `Decision recorded: ${OPTION_LABEL[option]}, overriding the recommendation of ${OPTION_LABEL[record.recommended_option as CapitalOption]}.`;
     });
   } catch (error) {
-    problem = error instanceof Error ? error.message : "Could not record the decision.";
+    problem = errorMessage(error, "Could not record the decision.");
   }
 
   if (problem) fail(recordPath, problem);

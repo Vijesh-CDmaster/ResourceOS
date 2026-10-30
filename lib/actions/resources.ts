@@ -5,7 +5,7 @@ import { withOrg } from "../db";
 import { requireUser } from "../auth";
 import { canManage, isStaff } from "../roles";
 import { notifyManagers, recordAudit } from "../audit";
-import { fail, field, ok } from "../action-utils";
+import { fail, field, ok, errorMessage } from "../action-utils";
 
 const STATUSES = ["ready", "maintenance", "suspended", "retired"];
 
@@ -73,7 +73,7 @@ export async function createResourceAction(formData: FormData): Promise<void> {
       });
     });
   } catch (error) {
-    fail("/admin", error instanceof Error ? error.message : "Could not create the resource.");
+    fail("/admin", errorMessage(error, "Could not create the resource."));
   }
 
   revalidatePath("/admin");
@@ -121,7 +121,7 @@ export async function updateResourceStatusAction(formData: FormData): Promise<vo
       }
     });
   } catch (error) {
-    fail(backTo, error instanceof Error ? error.message : "Could not update the resource.");
+    fail(backTo, errorMessage(error, "Could not update the resource."));
   }
 
   revalidatePath(backTo);
@@ -234,7 +234,7 @@ export async function importResourcesAction(formData: FormData): Promise<void> {
       return { imported, errors };
     });
   } catch (error) {
-    fail("/admin", error instanceof Error ? error.message : "Import failed.");
+    fail("/admin", errorMessage(error, "Import failed."));
   }
 
   revalidatePath("/admin");

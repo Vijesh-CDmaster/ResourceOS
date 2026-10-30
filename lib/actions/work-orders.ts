@@ -19,7 +19,7 @@ import {
   type OverrideAction,
   type WorkOrderStatus,
 } from "../work-orders";
-import { fail, field, optionalField, ok, parseDateInput } from "../action-utils";
+import { fail, field, optionalField, ok, parseDateInput, errorMessage } from "../action-utils";
 
 const PAGE = "/work-orders";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -468,7 +468,7 @@ export async function assignWorkOrderAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not assign the work order.");
+    fail(target, errorMessage(error, "Could not assign the work order."));
   });
 
   revalidatePath(PAGE);
@@ -502,7 +502,7 @@ export async function startWorkOrderAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not start the work order.");
+    fail(target, errorMessage(error, "Could not start the work order."));
   });
 
   revalidatePath(PAGE);
@@ -543,7 +543,7 @@ export async function waitForPartsAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not update the work order.");
+    fail(target, errorMessage(error, "Could not update the work order."));
   });
 
   revalidatePath(PAGE);
@@ -568,7 +568,7 @@ export async function resumeWorkOrderAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not resume the work order.");
+    fail(target, errorMessage(error, "Could not resume the work order."));
   });
 
   revalidatePath(PAGE);
@@ -620,7 +620,7 @@ export async function escalateWorkOrderAction(formData: FormData): Promise<void>
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not escalate the work order.");
+    fail(target, errorMessage(error, "Could not escalate the work order."));
   });
 
   revalidatePath(PAGE);
@@ -687,7 +687,7 @@ export async function completeRepairAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not complete the repair.");
+    fail(target, errorMessage(error, "Could not complete the repair."));
   });
 
   revalidatePath(PAGE);
@@ -781,7 +781,7 @@ export async function verifyWorkOrderAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not record the verification.");
+    fail(target, errorMessage(error, "Could not record the verification."));
   });
 
   revalidatePath(PAGE);
@@ -895,7 +895,7 @@ export async function releaseWorkOrderAction(formData: FormData): Promise<void> 
     }
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not release the asset.");
+    fail(target, errorMessage(error, "Could not release the asset."));
   });
 
   revalidatePath(PAGE);
@@ -946,7 +946,7 @@ export async function reopenWorkOrderAction(formData: FormData): Promise<void> {
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not reopen the work order.");
+    fail(target, errorMessage(error, "Could not reopen the work order."));
   });
 
   revalidatePath(PAGE);
@@ -1138,7 +1138,7 @@ export async function createEmergencyOverrideAction(formData: FormData): Promise
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not record the override.");
+    fail(target, errorMessage(error, "Could not record the override."));
   });
 
   revalidatePath(PAGE);
@@ -1179,7 +1179,7 @@ export async function revokeEmergencyOverrideAction(formData: FormData): Promise
     });
   }).catch((error: unknown) => {
     rethrowRedirect(error);
-    fail(target, error instanceof Error ? error.message : "Could not revoke the override.");
+    fail(target, errorMessage(error, "Could not revoke the override."));
   });
 
   revalidatePath(PAGE);
